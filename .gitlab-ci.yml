@@ -1,0 +1,53 @@
+variables:
+    #PUSH lên dockerhub thanquyle/project-gitlab:tag_commit
+    # thanquyle/online-banking:v0.0.1_123a123
+    DOCKER_IMAGE: ${REGISTRY_PROJECT}/${CI_PROJECT_NAME}:${CI_COMMIT_TAG}_${CI_COMMIT_SHORT_SHA}
+    DOCKER_CONTAINER: ${CI_PROJECT_NAME}
+stages:
+    - buildandpush
+    - deploy
+    - showlog
+
+buildandpush:
+    stage: buildandpush
+    variables:
+        GIT_STRATEGY: clone
+    before_script:
+        - docker login -u $REGISTRY_USER -p $REGISTRY_PASSWORD
+    script:
+        - docker build -t $DOCKER_IMAGE .
+        - docker push $DOCKER_IMAGE
+    tags:
+        - bank
+    only:
+        - tags
+
+deploy:
+    stage: deploy
+    variables:
+        GIT_STRATEGY: none
+    when: manual
+    before_script:
+        - docker login -u $REGISTRY_USER -p $REGISTRY_PASSWORD
+    script:
+        - docker pull $DOCKER_IMAGE
+        - docker rm -f $DOCKER_CONTAINER
+        - docker run --name $DOCKER_CONTAINER -dp 6666:8082 $DOCKER_IMAGE
+    tags:
+        - bank
+    only:
+        - tags
+
+
+showlog:
+    stage: showlog
+    variables:
+        GIT_STRATEGY: none
+    when: manual
+    script:
+        - sleep 20
+        - docker logs $DOCKER_CONTAINER
+    tags:
+        - bank
+    only:
+        - tags
